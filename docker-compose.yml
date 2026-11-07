@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  order-api:
+    build: .
+    container_name: order-api
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/orderdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      - SPRING_DATASOURCE_USERNAME=order_user
+      - SPRING_DATASOURCE_PASSWORD=order_pass
+    depends_on:
+      redis:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: order-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  mysql:
+    image: mysql:8.0
+    container_name: order-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_DATABASE=orderdb
+      - MYSQL_USER=order_user
+      - MYSQL_PASSWORD=order_pass
+      - MYSQL_ROOT_PASSWORD=root_secret
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
